@@ -1,6 +1,7 @@
 package main
 import (
 	"fmt"
+	"time"
 )
 
 
@@ -22,15 +23,11 @@ func (mainQ *MainQueue) toMain(input []int) {
 	return
 }
 
-func (mainQ *MainQueue) increment(toMinute func(int)) bool{
+func (mainQ *MainQueue) increment(toMinute func(int)) {
 
-	if(mainQ.isInOrder() && mainQ.minuteCount > 0){
-		return true
-	}
 	toMinute(mainQ.q[mainQ.front])
 	mainQ.front = (mainQ.front+1)%(len(mainQ.q))//circular
 	mainQ.minuteCount++
-	return false
 }
 
 func (mainQ *MainQueue) isInOrder() bool {
@@ -96,8 +93,8 @@ func (clock *BallClock) getToHourQ(toMain func([]int)) func(int){
 
 	return func(ball int){
 		if(len(clock.hourQ) == 11){
-			toMain([]int{ball})
 			toMain(clock.hourQ)
+			toMain([]int{ball})
 			clock.hourQ = clock.hourQ[0:0]
 		} else {
 			clock.hourQ = append(clock.hourQ, ball)
@@ -138,31 +135,44 @@ func makeBallClock(numberOfBalls int) *BallClock{
 }
 
 func incrementTo(numberOfBalls, numberOfMinutes int){
+	start := time.Now()
 	clock := makeBallClock(numberOfBalls)
 	for clock.mainQueue.minuteCount != numberOfMinutes {
 		clock.mainQueue.increment(clock.toMinute)
 	}
 	fmt.Println(clock)
+	fmt.Printf("This took %v\n\n", time.Since(start))
+
 }
 
 func findRepeat(numberOfBalls int){
+	start := time.Now()
 	clock := makeBallClock(numberOfBalls)
 	for !clock.mainQueue.isInOrder() {
 		clock.mainQueue.increment(clock.toMinute)
+		if(clock.mainQueue.minuteCount%1440 == 0 ){
+			//fmt.Println(clock)
+		}
 	}
-	fmt.Printf("Number of Balls:%v  Number of Days:%v", numberOfBalls, clock.mainQueue.minuteCount/1440);
+	fmt.Printf("Number of Balls: %v  Number of Days: %v ", numberOfBalls, clock.mainQueue.minuteCount/1440);
+	fmt.Printf("\nThis took %v\n\n", time.Since(start))
+}
+
+func testSuite(){
+	incrementTo(30, 1000000)
+	incrementTo(45, 1000000)
+	incrementTo(90, 1000000)
+	incrementTo(127, 1000000)
+
+	findRepeat(30)
+	findRepeat(45)
+	findRepeat(60)
+	findRepeat(90)
+	findRepeat(127)
+
 }
 
 func main() {
-	fmt.Println("Start")
-	numberOfBalls := 127
-	minuteMode := true
-	numberOfMinutes := 2348723
-
-	if(minuteMode){
-		incrementTo(numberOfBalls, numberOfMinutes)
-	} else {
-		findRepeat(numberOfBalls)
-	}
+	testSuite()
 }
 
