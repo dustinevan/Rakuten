@@ -7,31 +7,28 @@ import (
 
 
 //initialize the front and back as 0!!
-type MainQueue struct {
+type CircularMainQueue struct {
 	q []int
 	front int
 	back int
+}
+
+type BallClock struct {
+	mainQueue CircularMainQueue
+	minuteQ []int
+	fiveMinuteQ []int
+	hourQ []int
 	minuteCount int
 }
 
-func (mainQ *MainQueue) toMain(input []int) {
-
-	for i := len(input)-1; i > -1; i-- {
-		mainQ.q[mainQ.back] = input[i];
-		mainQ.back = (mainQ.back+1)%(len(mainQ.q))//this keeps it circular
-	}
-	return
+func (clock *BallClock) increment() {
+	clock.pushMinuteQ(clock.mainQueue.q[clock.mainQueue.front])
+	clock.mainQueue.front = (clock.mainQueue.front+1)%(len(clock.mainQueue.q))//circular
+	clock.minuteCount++
 }
 
-func (mainQ *MainQueue) increment(toMinute func(int)) {
-
-	toMinute(mainQ.q[mainQ.front])
-	mainQ.front = (mainQ.front+1)%(len(mainQ.q))//circular
-	mainQ.minuteCount++
-}
-
-func (mainQ *MainQueue) isInOrder() bool {
-	if(mainQ.front != mainQ.back || mainQ.minuteCount == 0){
+func (mainQ *CircularMainQueue) isInOrder() bool {
+	if(mainQ.front != mainQ.back){
 		return false
 	}
 
@@ -53,69 +50,58 @@ func (mainQ *MainQueue) isInOrder() bool {
 	return true
 }
 
-
-type BallClock struct {
-	mainQueue MainQueue
-	minuteQ []int
-	fiveMinuteQ []int
-	hourQ []int
-	toMinute func(int) //this is kind of weird, but I need to pass it to the incrementor...there must be a better way
+func (clock *BallClock) pushMainQ(input []int) {
+	for i := len(input)-1; i > -1; i-- {
+		clock.mainQueue.q[clock.mainQueue.back] = input[i];
+		clock.mainQueue.back = (clock.mainQueue.back+1)%(len(clock.mainQueue.q))//this keeps it circular
+	}
+	return
 }
 
-func (clock *BallClock) getToMinuteQ(toFiveMinute func(int), toMain func([]int)) func(int){
-
-	return func(ball int){
-		if(len(clock.minuteQ) < 4){
-			clock.minuteQ = append(clock.minuteQ, ball)
-		} else {
-			toMain(clock.minuteQ)
-			toFiveMinute(ball)
-			clock.minuteQ = clock.minuteQ[0:0]
-		}
+func (clock *BallClock) pushMinuteQ(ball int) {
+	if(len(clock.minuteQ) < 4){
+		clock.minuteQ = append(clock.minuteQ, ball)
+	} else {
+		clock.pushMainQ(clock.minuteQ)
+		clock.pushFiveMinuteQ(ball)
+		clock.minuteQ = clock.minuteQ[0:0]
 	}
 }
 
-func (clock *BallClock) getToFiveMinuteQ(toHour func(int), toMain func([]int)) func(int){
-	//q := make([]int, 0, 11)
-
-	return func(ball int){
-		if(len(clock.fiveMinuteQ) < 11){
-			clock.fiveMinuteQ = append(clock.fiveMinuteQ, ball)
-		} else {
-			toMain(clock.fiveMinuteQ)
-			toHour(ball)
-			clock.fiveMinuteQ = clock.fiveMinuteQ[0:0]
-		}
+func (clock *BallClock) pushFiveMinuteQ(ball int) {
+	if(len(clock.fiveMinuteQ) < 11){
+		clock.fiveMinuteQ = append(clock.fiveMinuteQ, ball)
+	} else {
+		clock.pushMainQ(clock.fiveMinuteQ)
+		clock.pushHourQ(ball)
+		clock.fiveMinuteQ = clock.fiveMinuteQ[0:0]
 	}
 }
 
-func (clock *BallClock) getToHourQ(toMain func([]int)) func(int){
-
-	return func(ball int){
-		if(len(clock.hourQ) == 11){
-			toMain(clock.hourQ)
-			toMain([]int{ball})
-			clock.hourQ = clock.hourQ[0:0]
-		} else {
-			clock.hourQ = append(clock.hourQ, ball)
-		}
+func (clock *BallClock) pushHourQ(ball int) {
+	if(len(clock.hourQ) == 11){
+		clock.pushMainQ(clock.hourQ)
+		clock.pushMainQ([]int{ball})
+		clock.hourQ = clock.hourQ[0:0]
+	} else {
+		clock.hourQ = append(clock.hourQ, ball)
 	}
 }
 
 func (clock BallClock) String() string {
 	s := fmt.Sprintf("{Min:%v, FiveMin:%v, Hour:%v, Main:%v}", clock.minuteQ, clock.fiveMinuteQ, clock.hourQ, clock.mainQueue.q);
-	s += fmt.Sprintf("; MinutesPassed = %v", clock.mainQueue.minuteCount )
+	s += fmt.Sprintf("; MinutesPassed = %v", clock.minuteCount )
 	return s
 }
 
 
 //Contruction Methods
-func makeMainQueue(numberOfBalls int) *MainQueue{
+func makeMainQueue(numberOfBalls int) *CircularMainQueue{
 	q := make([]int, numberOfBalls)
 	for i := 1; i < numberOfBalls+1; i++ {
 		q[i-1] = i
 	}
-	return &MainQueue{q, 0, 0, 0}
+	return &CircularMainQueue{q, 0, 0}
 }
 
 func makeBallClock(numberOfBalls int) *BallClock{
@@ -123,13 +109,7 @@ func makeBallClock(numberOfBalls int) *BallClock{
 	minuteQ := make([]int, 0, 11)
 	fiveMinuteQ := make([]int, 0, 11)
 	hourQ := make([]int, 0, 11)
-	clock := &BallClock{*mainQueue, minuteQ, fiveMinuteQ, hourQ, func(int){}}
-
-	//wire up the functions
-	toMain := clock.mainQueue.toMain
-	toHour := clock.getToHourQ(toMain)
-	toFiveMinute := clock.getToFiveMinuteQ(toHour, toMain)
-	clock.toMinute = clock.getToMinuteQ(toFiveMinute, toMain)
+	clock := &BallClock{*mainQueue, minuteQ, fiveMinuteQ, hourQ, 0}
 
 	return clock
 }
@@ -137,8 +117,8 @@ func makeBallClock(numberOfBalls int) *BallClock{
 func incrementTo(numberOfBalls, numberOfMinutes int){
 	start := time.Now()
 	clock := makeBallClock(numberOfBalls)
-	for clock.mainQueue.minuteCount != numberOfMinutes {
-		clock.mainQueue.increment(clock.toMinute)
+	for clock.minuteCount != numberOfMinutes {
+		clock.increment()
 	}
 	fmt.Println(clock)
 	fmt.Printf("This took %v\n\n", time.Since(start))
@@ -148,13 +128,15 @@ func incrementTo(numberOfBalls, numberOfMinutes int){
 func findRepeat(numberOfBalls int){
 	start := time.Now()
 	clock := makeBallClock(numberOfBalls)
+
+	clock.increment()
 	for !clock.mainQueue.isInOrder() {
-		clock.mainQueue.increment(clock.toMinute)
-		if(clock.mainQueue.minuteCount%1440 == 0 ){
+		clock.increment()
+		if(clock.minuteCount%1440 == 0 ){
 			//fmt.Println(clock)
 		}
 	}
-	fmt.Printf("Number of Balls: %v  Number of Days: %v ", numberOfBalls, clock.mainQueue.minuteCount/1440);
+	fmt.Printf("Number of Balls: %v  Number of Days: %v ", numberOfBalls, clock.minuteCount/1440);
 	fmt.Printf("\nThis took %v\n\n", time.Since(start))
 }
 
