@@ -13,6 +13,7 @@ type CircularMainQueue struct {
 	back int
 }
 
+//All the Queues combined with a counter
 type BallClock struct {
 	mainQueue CircularMainQueue
 	minuteQ []int
@@ -21,12 +22,14 @@ type BallClock struct {
 	minuteCount int
 }
 
+//Send a ball from the mainQ to the minuteQ
 func (clock *BallClock) increment() {
 	clock.pushMinuteQ(clock.mainQueue.q[clock.mainQueue.front])
 	clock.mainQueue.front = (clock.mainQueue.front+1)%(len(clock.mainQueue.q))//circular
 	clock.minuteCount++
 }
 
+//The order checking is more involved due to the circular array
 func (mainQ *CircularMainQueue) isInOrder() bool {
 	if(mainQ.front != mainQ.back){
 		return false
@@ -50,6 +53,9 @@ func (mainQ *CircularMainQueue) isInOrder() bool {
 	return true
 }
 
+/**
+These Queues model the operation of the rows in the ball clock
+ */
 func (clock *BallClock) pushMainQ(input []int) {
 	for i := len(input)-1; i > -1; i-- {
 		clock.mainQueue.q[clock.mainQueue.back] = input[i];
@@ -88,14 +94,37 @@ func (clock *BallClock) pushHourQ(ball int) {
 	}
 }
 
+/**
+Stringer for Ball Clock
+ */
 func (clock BallClock) String() string {
-	s := fmt.Sprintf("{Min:%v, FiveMin:%v, Hour:%v, Main:%v}", clock.minuteQ, clock.fiveMinuteQ, clock.hourQ, clock.mainQueue.q);
+	s := fmt.Sprintf("{Min:%v, FiveMin:%v, Hour:%v, Main:%v}", clock.minuteQ, clock.fiveMinuteQ, clock.hourQ, clock.mainQueue);
 	s += fmt.Sprintf("; MinutesPassed = %v", clock.minuteCount )
 	return s
 }
 
+/**
+This Stringer is needed so the circular array prints a normal slice, scaled to how many
+valid elements it contains. The circular array has old element between the back and front
+pointers
+ */
+func (Q CircularMainQueue) String() string {
+	a := make([]int ,0)
+	//The Queue is full if front == back
+	if(Q.front == Q.back){
+		return fmt.Sprintf("%v", Q.q)
+	}
+	front := Q.front
+	back := Q.back
+	for front != back {
+		a = append(a, Q.q[front])
+		front = (front+1)%len(Q.q)
+	}
+	return fmt.Sprintf("%v", a)
+}
 
-//Contruction Methods
+
+//Contructors
 func makeMainQueue(numberOfBalls int) *CircularMainQueue{
 	q := make([]int, numberOfBalls)
 	for i := 1; i < numberOfBalls+1; i++ {
@@ -114,6 +143,7 @@ func makeBallClock(numberOfBalls int) *BallClock{
 	return clock
 }
 
+//Higher level runner functions
 func incrementTo(numberOfBalls, numberOfMinutes int){
 	start := time.Now()
 	clock := makeBallClock(numberOfBalls)
@@ -141,7 +171,7 @@ func findRepeat(numberOfBalls int){
 }
 
 func testSuite(){
-	incrementTo(30, 1000000)
+	incrementTo(27, 1440)
 	incrementTo(45, 1000000)
 	incrementTo(90, 1000000)
 	incrementTo(127, 1000000)
