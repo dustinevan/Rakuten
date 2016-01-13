@@ -171,16 +171,16 @@ func findRepeat(numberOfBalls int){
 }
 
 func testSuite(){
-	incrementTo(27, 1440)
-	incrementTo(45, 1000000)
-	incrementTo(90, 1000000)
-	incrementTo(127, 1000000)
+	//incrementTo(27, 1440)
+	//incrementTo(45, 1000000)
+	//incrementTo(90, 1000000)
+	//incrementTo(127, 1000000)
 
 	findRepeat(30)
 	findRepeat(45)
 	findRepeat(60)
 	findRepeat(90)
-	findRepeat(127)
+	findRepeat(123)
 
 }
 

@@ -3,188 +3,287 @@ import (
 	"fmt"
 	"time"
 )
+const qsize int = 123
 
-
-
-//initialize the front and back as 0!!
-type CircularMainQueue struct {
-	q []int
-	front int
-	back int
-}
-
-//All the Queues combined with a counter
-type BallClock struct {
-	mainQueue CircularMainQueue
-	minuteQ []int
-	fiveMinuteQ []int
-	hourQ []int
-	minuteCount int
-}
-
-//Send a ball from the mainQ to the minuteQ
-func (clock *BallClock) increment() {
-	clock.pushMinuteQ(clock.mainQueue.q[clock.mainQueue.front])
-	clock.mainQueue.front = (clock.mainQueue.front+1)%(len(clock.mainQueue.q))//circular
-	clock.minuteCount++
-}
-
-//The order checking is more involved due to the circular array
-func (mainQ *CircularMainQueue) isInOrder() bool {
-	if(mainQ.front != mainQ.back){
-		return false
-	}
-
-	indexOffset := 0
-	for i := 0; i < len(mainQ.q)-1; i++ {
-		if mainQ.q[i] == 1 {
-			indexOffset = i
-			break
-		}
-	}
-
-	for i := 0; i < len(mainQ.q)-1; i++ {
-		index1 := (indexOffset + i)%(len(mainQ.q))
-		index2 := (index1+1)%(len(mainQ.q))
-		if (mainQ.q[index2] - mainQ.q[index1]) != 1{
-			return false
-		}
-	}
-	return true
-}
-
-/**
-These Queues model the operation of the rows in the ball clock
- */
-func (clock *BallClock) pushMainQ(input []int) {
-	for i := len(input)-1; i > -1; i-- {
-		clock.mainQueue.q[clock.mainQueue.back] = input[i];
-		clock.mainQueue.back = (clock.mainQueue.back+1)%(len(clock.mainQueue.q))//this keeps it circular
-	}
-	return
-}
-
-func (clock *BallClock) pushMinuteQ(ball int) {
-	if(len(clock.minuteQ) < 4){
-		clock.minuteQ = append(clock.minuteQ, ball)
-	} else {
-		clock.pushMainQ(clock.minuteQ)
-		clock.pushFiveMinuteQ(ball)
-		clock.minuteQ = clock.minuteQ[0:0]
-	}
-}
-
-func (clock *BallClock) pushFiveMinuteQ(ball int) {
-	if(len(clock.fiveMinuteQ) < 11){
-		clock.fiveMinuteQ = append(clock.fiveMinuteQ, ball)
-	} else {
-		clock.pushMainQ(clock.fiveMinuteQ)
-		clock.pushHourQ(ball)
-		clock.fiveMinuteQ = clock.fiveMinuteQ[0:0]
-	}
-}
-
-func (clock *BallClock) pushHourQ(ball int) {
-	if(len(clock.hourQ) == 11){
-		clock.pushMainQ(clock.hourQ)
-		clock.pushMainQ([]int{ball})
-		clock.hourQ = clock.hourQ[0:0]
-	} else {
-		clock.hourQ = append(clock.hourQ, ball)
-	}
-}
-
-/**
-Stringer for Ball Clock
- */
-func (clock BallClock) String() string {
-	s := fmt.Sprintf("{Min:%v, FiveMin:%v, Hour:%v, Main:%v}", clock.minuteQ, clock.fiveMinuteQ, clock.hourQ, clock.mainQueue);
-	s += fmt.Sprintf("; MinutesPassed = %v", clock.minuteCount )
-	return s
-}
-
-/**
-This Stringer is needed so the circular array prints a normal slice, scaled to how many
-valid elements it contains. The circular array has old element between the back and front
-pointers
- */
-func (Q CircularMainQueue) String() string {
-	a := make([]int ,0)
-	//The Queue is full if front == back
-	if(Q.front == Q.back){
-		return fmt.Sprintf("%v", Q.q)
-	}
-	front := Q.front
-	back := Q.back
-	for front != back {
-		a = append(a, Q.q[front])
-		front = (front+1)%len(Q.q)
-	}
-	return fmt.Sprintf("%v", a)
-}
-
-
-//Contructors
-func makeMainQueue(numberOfBalls int) *CircularMainQueue{
-	q := make([]int, numberOfBalls)
-	for i := 1; i < numberOfBalls+1; i++ {
-		q[i-1] = i
-	}
-	return &CircularMainQueue{q, 0, 0}
-}
-
-func makeBallClock(numberOfBalls int) *BallClock{
-	mainQueue := makeMainQueue(numberOfBalls)
-	minuteQ := make([]int, 0, 11)
-	fiveMinuteQ := make([]int, 0, 11)
-	hourQ := make([]int, 0, 11)
-	clock := &BallClock{*mainQueue, minuteQ, fiveMinuteQ, hourQ, 0}
-
-	return clock
-}
-
-//Higher level runner functions
-func incrementTo(numberOfBalls, numberOfMinutes int){
-	start := time.Now()
-	clock := makeBallClock(numberOfBalls)
-	for clock.minuteCount != numberOfMinutes {
-		clock.increment()
-	}
-	fmt.Println(clock)
-	fmt.Printf("This took %v\n\n", time.Since(start))
-
-}
-
-func findRepeat(numberOfBalls int){
-	start := time.Now()
-	clock := makeBallClock(numberOfBalls)
-
-	clock.increment()
-	for !clock.mainQueue.isInOrder() {
-		clock.increment()
-		if(clock.minuteCount%1440 == 0 ){
-			//fmt.Println(clock)
-		}
-	}
-	fmt.Printf("Number of Balls: %v  Number of Days: %v ", numberOfBalls, clock.minuteCount/1440);
-	fmt.Printf("\nThis took %v\n\n", time.Since(start))
-}
-
-func testSuite(){
-	incrementTo(27, 1440)
-	incrementTo(45, 1000000)
-	incrementTo(90, 1000000)
-	incrementTo(127, 1000000)
-
-	findRepeat(30)
-	findRepeat(45)
-	findRepeat(60)
-	findRepeat(90)
-	findRepeat(123)
-
-}
+/*
+these constants are used to test whether we can just add all the balls in the respective Qs
+and increment the back all at once, or if we have to circle the array and increment one at a time.
+*/
+const qBackMin int = qsize - 4
+const qBack5Min int = qsize - 11
+const qBackHour int = qsize - 12
+const qSizeMinusOne int = qsize - 1
 
 func main() {
-	testSuite()
-}
 
+	start := time.Now()
+
+	//MainQ
+	var mainQ [qsize]int
+	var mainQfront, mainQback int = 0, 0
+	for i := 0; i < qsize; i++ {
+		mainQ[i] = i+1;
+	}
+
+	//MinuteQ
+	var minuteQ [5]int
+	minuteQback := 0
+
+	//FiveMinQ
+	var fiveMinQ [12]int
+	fiveMinQback := 0
+
+	//HourQ
+	var hourQ [12]int
+	hourQback := 0
+
+	done := false
+	minute := 0
+	for !done {
+		minute++
+
+		//move ball out of mainQ
+		minuteQ[minuteQback] = mainQ[mainQfront]
+		if mainQfront == qSizeMinusOne {
+			mainQfront = 0
+		} else {
+			mainQfront++
+		}
+
+		//Did we just fill the minuteQ? if yes do more stuff
+		if minuteQback == 4 {
+			fiveMinQ[fiveMinQback] = minuteQ[4]
+			if mainQback < qBackMin {
+				//mainQ[mainQback:mainQback+3] = []int{minuteQ[3], minuteQ[2], minuteQ[1], minuteQ[0]}
+				mainQ[mainQback] = minuteQ[3]
+				mainQ[mainQback+1] = minuteQ[2]
+				mainQ[mainQback+2] = minuteQ[1]
+				mainQ[mainQback+3] = minuteQ[0]
+				mainQback+=4
+			} else {
+				mainQ[mainQback] = minuteQ[3]
+				if mainQback == qSizeMinusOne {
+					mainQback = 0
+				} else {
+					mainQback++
+				}
+				mainQ[mainQback] = minuteQ[2]
+				if mainQback == qSizeMinusOne {
+					mainQback = 0
+				} else {
+					mainQback++
+				}
+				mainQ[mainQback] = minuteQ[1]
+				if mainQback == qSizeMinusOne {
+					mainQback = 0
+				} else {
+					mainQback++
+				}
+				mainQ[mainQback] = minuteQ[0]
+				if mainQback == qSizeMinusOne {
+					mainQback = 0
+				} else {
+					mainQback++
+				}
+			}
+			if fiveMinQback == 11 {
+				hourQ[hourQback] = fiveMinQ[11]
+				if mainQback < qBack5Min {
+					mainQ[mainQback] = fiveMinQ[10]
+					mainQ[mainQback+1] = fiveMinQ[9]
+					mainQ[mainQback+2] = fiveMinQ[8]
+					mainQ[mainQback+3] = fiveMinQ[7]
+					mainQ[mainQback+4] = fiveMinQ[6]
+					mainQ[mainQback+5] = fiveMinQ[5]
+					mainQ[mainQback+6] = fiveMinQ[4]
+					mainQ[mainQback+7] = fiveMinQ[3]
+					mainQ[mainQback+8] = fiveMinQ[2]
+					mainQ[mainQback+9] = fiveMinQ[1]
+					mainQ[mainQback+10] = fiveMinQ[0]
+					mainQback+=11
+				} else {
+					mainQ[mainQback] = fiveMinQ[10]
+					if mainQback == qSizeMinusOne {
+						mainQback = 0
+					} else {
+						mainQback++
+					}
+					mainQ[mainQback] = fiveMinQ[9]
+					if mainQback == qSizeMinusOne {
+						mainQback = 0
+					} else {
+						mainQback++
+					}
+					mainQ[mainQback] = fiveMinQ[8]
+					if mainQback == qSizeMinusOne {
+						mainQback = 0
+					} else {
+						mainQback++
+					}
+					mainQ[mainQback] = fiveMinQ[7]
+					if mainQback == qSizeMinusOne {
+						mainQback = 0
+					} else {
+						mainQback++
+					}
+					mainQ[mainQback] = fiveMinQ[6]
+					if mainQback == qSizeMinusOne {
+						mainQback = 0
+					} else {
+						mainQback++
+					}
+					mainQ[mainQback] = fiveMinQ[5]
+					if mainQback == qSizeMinusOne {
+						mainQback = 0
+					} else {
+						mainQback++
+					}
+					mainQ[mainQback] = fiveMinQ[4]
+					if mainQback == qSizeMinusOne {
+						mainQback = 0
+					} else {
+						mainQback++
+					}
+					mainQ[mainQback] = fiveMinQ[3]
+					if mainQback == qSizeMinusOne {
+						mainQback = 0
+					} else {
+						mainQback++
+					}
+					mainQ[mainQback] = fiveMinQ[2]
+					if mainQback == qSizeMinusOne {
+						mainQback = 0
+					} else {
+						mainQback++
+					}
+					mainQ[mainQback] = fiveMinQ[1]
+					if mainQback == qSizeMinusOne {
+						mainQback = 0
+					} else {
+						mainQback++
+					}
+					mainQ[mainQback] = fiveMinQ[0]
+					if mainQback == qSizeMinusOne {
+						mainQback = 0
+					} else {
+						mainQback++
+					}
+				}
+				if hourQback == 11 {
+					if mainQback < qBackHour {
+						mainQ[mainQback] = hourQ[10]
+						mainQ[mainQback + 1] = hourQ[9]
+						mainQ[mainQback + 2] = hourQ[8]
+						mainQ[mainQback + 3] = hourQ[7]
+						mainQ[mainQback + 4] = hourQ[6]
+						mainQ[mainQback + 5] = hourQ[5]
+						mainQ[mainQback + 6] = hourQ[4]
+						mainQ[mainQback + 7] = hourQ[3]
+						mainQ[mainQback + 8] = hourQ[2]
+						mainQ[mainQback + 9] = hourQ[1]
+						mainQ[mainQback + 10] = hourQ[0]
+						mainQ[mainQback+ 11] = hourQ[11]
+						mainQback += 12
+					} else {
+						mainQ[mainQback] = hourQ[10]
+						if mainQback == qSizeMinusOne {
+							mainQback = 0
+						} else {
+							mainQback++
+						}
+						mainQ[mainQback] = hourQ[9]
+						if mainQback == qSizeMinusOne {
+							mainQback = 0
+						} else {
+							mainQback++
+						}
+						mainQ[mainQback] = hourQ[8]
+						if mainQback == qSizeMinusOne {
+							mainQback = 0
+						} else {
+							mainQback++
+						}
+						mainQ[mainQback] = hourQ[7]
+						if mainQback == qSizeMinusOne {
+							mainQback = 0
+						} else {
+							mainQback++
+						}
+						mainQ[mainQback] = hourQ[6]
+						if mainQback == qSizeMinusOne {
+							mainQback = 0
+						} else {
+							mainQback++
+						}
+						mainQ[mainQback] = hourQ[5]
+						if mainQback == qSizeMinusOne {
+							mainQback = 0
+						} else {
+							mainQback++
+						}
+						mainQ[mainQback] = hourQ[4]
+						if mainQback == qSizeMinusOne {
+							mainQback = 0
+						} else {
+							mainQback++
+						}
+						mainQ[mainQback] = hourQ[3]
+						if mainQback == qSizeMinusOne {
+							mainQback = 0
+						} else {
+							mainQback++
+						}
+						mainQ[mainQback] = hourQ[2]
+						if mainQback == qSizeMinusOne {
+							mainQback = 0
+						} else {
+							mainQback++
+						}
+						mainQ[mainQback] = hourQ[1]
+						if mainQback == qSizeMinusOne {
+							mainQback = 0
+						} else {
+							mainQback++
+						}
+						mainQ[mainQback] = hourQ[0]
+						if mainQback == qSizeMinusOne {
+							mainQback = 0
+						} else {
+							mainQback++
+						}
+						mainQ[mainQback] = hourQ[11]
+						if mainQback == qSizeMinusOne {
+							mainQback = 0
+						} else {
+							mainQback++
+						}
+					}
+					hourQback = 0
+				} else {
+					hourQback++
+				}
+				fiveMinQback = 0
+			} else {
+				fiveMinQback++
+			}
+			minuteQback = 0
+		} else {
+			minuteQback++
+		}
+
+		if mainQfront == mainQback {
+			for i := 0; i < qsize-1; i++ {
+				if( mainQ[i] > mainQ[i+1] ){
+					if(i == mainQback){
+						continue
+					} else {
+						goto notInOrder
+					}
+				}
+			}
+			done = true;
+		}
+		notInOrder:
+	}
+	fmt.Printf("\nThis took %v\n\n%v\n", time.Since(start), (minute)/1440)
+}
