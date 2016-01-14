@@ -2,44 +2,65 @@ package main
 import (
 	"fmt"
 	"time"
+	"os"
+	"strconv"
 )
-const qsize int = 123
 
-/*
-these constants are used to test whether we can just add all the balls in the respective Qs
-and increment the back all at once, or if we have to circle the array and increment one at a time.
-*/
-const qBackMin int = qsize - 4
-const qBack5Min int = qsize - 11
-const qBackHour int = qsize - 12
-const qSizeMinusOne int = qsize - 1
 
 func main() {
 
 	start := time.Now()
+	qsize := 27
+	var err error;
+	minutesToRun := -1
+	args := os.Args[1:]
+	switch len(args) {
+	case 0:
+		fmt.Println("Usage:\n\tfasterballclock.go numberOfBalls [minutes to run]\n\n")
+		os.Exit(1)
+	case 1:
+		if qsize, err = strconv.Atoi(args[0]); err != nil {
+			fmt.Println("Usage:\n\tfasterballclock.go numberOfBalls [minutes to run]\n\n")
+			os.Exit(1)
+		}
+	case 2:
+		if qsize, err = strconv.Atoi(args[0]); err != nil {
+			fmt.Println("Usage:\n\tfasterballclock.go numberOfBalls [minutes to run]\n\n")
+			os.Exit(1)
+		}
+		if minutesToRun, err = strconv.Atoi(args[1]); err != nil {
+			fmt.Println("Usage:\n\tfasterballclock.go numberOfBalls [minutes to run]\n\n")
+			os.Exit(1)
+		}
+	}
+
+	qBackMin := qsize - 4
+	qBack5Min := qsize - 11
+	qBackHour := qsize - 12
+	qSizeMinusOne := qsize - 1
 
 	//MainQ
-	var mainQ [qsize]int
-	var mainQfront, mainQback int = 0, 0
+	mainQ := make([]int, qsize, qsize)
+	mainQfront, mainQback := 0, 0
 	for i := 0; i < qsize; i++ {
 		mainQ[i] = i+1;
 	}
 
 	//MinuteQ
-	var minuteQ [5]int
+	minuteQ := make([]int, 5, 5)
 	minuteQback := 0
 
 	//FiveMinQ
-	var fiveMinQ [12]int
+	fiveMinQ := make([]int, 12, 12)
 	fiveMinQback := 0
 
 	//HourQ
-	var hourQ [12]int
+	hourQ := make([]int, 12, 12)
 	hourQback := 0
 
 	done := false
 	minute := 0
-	for !done {
+	for !done && (minutesToRun != minute) {
 		minute++
 
 		//move ball out of mainQ
@@ -281,9 +302,11 @@ func main() {
 					}
 				}
 			}
+			minute++
 			done = true;
 		}
 		notInOrder:
 	}
 	fmt.Printf("\nThis took %v\n\n%v\n", time.Since(start), (minute)/1440)
+	fmt.Printf("{Min:%v, FiveMin:%v, Hour:%v, Main:%v}", minuteQ, fiveMinQ, hourQ, mainQ)
 }
